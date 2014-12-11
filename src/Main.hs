@@ -1,6 +1,7 @@
 module Main where
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>), (<*>), pure)
 import qualified Data.Map.Strict as M
+import qualified Data.Set        as S
 
 
 main :: IO ()
@@ -8,6 +9,9 @@ main = do let b = M.singleton (1, 1) White
           print b
           print $ rotateQuadrant (0, 0) Counter b
           print b
+          print $ move (2, 2) Black (3, 0) Clockwise b
+          print $ possibleMoves White M.empty
+          putStrLn $ showBoard b
 
 
 type Board = M.Map (Int, Int) Space
@@ -17,12 +21,40 @@ data Space = Empty | White | Black deriving (Eq)
 
 
 instance Show Space where
-    show Empty = " "
+    show Empty = "."
     show White = "W"
     show Black = "B"
 
 
 data RotateDirection = Clockwise | Counter deriving (Eq, Show)
+
+
+showBoard :: Board -> String
+showBoard b = concat [showRow y | y <- [1..6]]
+              where showRow y = concat [show (b ! (x, y)) | x <- [1..3]] ++ " " ++ concat [show (b ! (x, y)) | x <- [4..6]] ++ "\n"
+
+possibleMoves :: Space -> Board -> [Board]
+possibleMoves s b = move <$>
+                    (S.toList $ S.difference allBoardCoordinates (M.keysSet b)) <*>
+                    pure s <*>
+                    quadrantDeltas <*>
+                    [Clockwise, Counter] <*>
+                    pure b
+
+move :: (Int, Int) -> Space -> (Int, Int) -> RotateDirection -> Board -> Board
+move p s d r b = rotateQuadrant d r (M.insert p s b)
+
+
+allBoardCoordinates :: S.Set (Int, Int)
+allBoardCoordinates = S.fromList [(x, y) | x <- [1..6], y <- [1..6]]
+
+
+quadrantDeltas :: [(Int, Int)]
+quadrantDeltas = [
+    (0, 0),
+    (3, 0),
+    (3, 3),
+    (0, 3)]
 
 
 rotateCoordinates :: [((Int, Int), (Int, Int))]
