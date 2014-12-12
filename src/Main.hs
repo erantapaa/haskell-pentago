@@ -94,7 +94,7 @@ rotateQuadrant (dx, dy) direction board = foldr (swapSpace direction) board rota
 
 
 scoreBoard :: Board -> Int
-scoreBoard b = sum $ map (scoreLine . map (b !)) boardRows
+scoreBoard b = sum $ map (scoreLine . map (b !)) (rowsFromGrid (6, 6) 5)
                where scoreLine :: [Space] -> Int
                      scoreLine xs = case countSpaces xs (0, 0)
                                     of (0, 0) -> 0
@@ -106,10 +106,6 @@ scoreBoard b = sum $ map (scoreLine . map (b !)) boardRows
                      countSpaces (White:xs) (w, b) = countSpaces xs (w+1, b)
                      countSpaces (Black:xs) (w, b) = countSpaces xs (w, b+1)
                      countSpaces [] t = t
-
-
-boardRows :: [[(Int, Int)]]
-boardRows = rowsFromGrid (6, 6) 5
 
 
 rowsFromGrid :: (Int, Int) -> Int -> [[(Int, Int)]]
