@@ -1,4 +1,5 @@
 module Main where
+import Data.List (nub)
 import Control.Applicative ((<$>), (<*>), pure)
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
@@ -6,12 +7,7 @@ import qualified Data.Set        as S
 
 main :: IO ()
 main = do let b = M.singleton (1, 1) White
-          print b
-          print $ rotateQuadrant (0, 0) Counter b
-          print b
-          print $ move (2, 2) Black (3, 0) Clockwise b
-          print $ possibleMoves White M.empty
-          putStrLn $ showBoard b
+          print $ negamaxScore 2 White b
 
 
 type Board = M.Map (Int, Int) Space
@@ -29,9 +25,22 @@ instance Show Space where
 data RotateDirection = Clockwise | Counter deriving (Eq, Show)
 
 
+negamaxScore :: Int -> Space -> Board -> Int
+negamaxScore depth color board
+    | depth == 0 || scoreBoard board > 8^5 = scoreBoard board
+    | otherwise                            = maximum $ map (negate . negamaxScore (depth-1) (otherColor color)) (nub $ possibleMoves color board)
+
+
+otherColor :: Space -> Space
+otherColor Empty = Empty
+otherColor White = Black
+otherColor Black = White
+
+
 showBoard :: Board -> String
 showBoard b = concat [showRow y | y <- [1..6]]
               where showRow y = concat [show (b ! (x, y)) | x <- [1..3]] ++ " " ++ concat [show (b ! (x, y)) | x <- [4..6]] ++ "\n"
+
 
 possibleMoves :: Space -> Board -> [Board]
 possibleMoves s b = move <$>
@@ -85,7 +94,7 @@ rotateQuadrant (dx, dy) direction board = foldr (swapSpace direction) board rota
 
 
 scoreBoard :: Board -> Int
-scoreBoard b = sum $ map (scoreLine . map (b !)) (rowsFromGrid (6, 6) 5)
+scoreBoard b = sum $ map (scoreLine . map (b !)) boardRows
                where scoreLine :: [Space] -> Int
                      scoreLine xs = case countSpaces xs (0, 0)
                                     of (0, 0) -> 0
@@ -97,6 +106,10 @@ scoreBoard b = sum $ map (scoreLine . map (b !)) (rowsFromGrid (6, 6) 5)
                      countSpaces (White:xs) (w, b) = countSpaces xs (w+1, b)
                      countSpaces (Black:xs) (w, b) = countSpaces xs (w, b+1)
                      countSpaces [] t = t
+
+
+boardRows :: [[(Int, Int)]]
+boardRows = rowsFromGrid (6, 6) 5
 
 
 rowsFromGrid :: (Int, Int) -> Int -> [[(Int, Int)]]
