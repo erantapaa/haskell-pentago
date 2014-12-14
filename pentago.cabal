@@ -17,7 +17,8 @@ cabal-version:       >=1.10
 
 executable pentago
   main-is:             Main.hs
-  ghc-options:         -O2 -threaded -fprof-auto "-with-rtsopts=-N -p -s -h -i0.1"
+  ghc-prof-options:    -O2 -threaded -fprof-auto
+  ghc-options:         -O2 -threaded
   -- other-modules:
   -- other-extensions:
   build-depends:       base >=4.7 && <4.8,

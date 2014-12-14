@@ -1,12 +1,12 @@
 module Main where
-import Data.List (nub)
+import Data.List (nub, foldl')
 import Control.Applicative ((<$>), (<*>), pure)
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 
 
 main :: IO ()
-main = do let b = M.singleton (1, 1) White
+main = do let b = M.fromList [((1,1), White)]
           print $ negamaxScore 2 White b
 
 
@@ -26,10 +26,16 @@ data RotateDirection = Clockwise | Counter deriving (Eq, Show)
 
 
 negamaxScore :: Int -> Space -> Board -> Int
-negamaxScore depth color board
-    | depth == 0 || scoreBoard board > 8^5 = scoreBoard board
-    | otherwise                            = maximum $ map (negate . negamaxScore (depth-1) (otherColor color)) (nub $ possibleMoves color board)
-
+negamaxScore depth color = abPrune depth color (-(8^8)) (8^8)
+    where abPrune depth color a b board
+              | depth == 0 = let s = scoreBoard board in if color == White then s else negate s
+              | otherwise = (\(a,_,_) -> a) $ foldl' f (-(8^8), a, b) (nub $ possibleMoves color board)
+              where f :: (Int, Int, Int) -> Board -> (Int, Int, Int)
+                    f x@(bestVal, a, b) board = if a >= b then x
+                                                else let val = abPrune (depth-1) (otherColor color) (negate b) (negate a) board
+                                                         bestVal' = max bestVal val
+                                                         a' = max a val
+                                                     in (bestVal', a', b)
 
 otherColor :: Space -> Space
 otherColor Empty = Empty
