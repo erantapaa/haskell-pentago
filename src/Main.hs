@@ -12,9 +12,7 @@ main = do let b = M.fromList [((1,1), White)]
 
 type Board = M.Map (Int, Int) Space
 
-
-data Space = Empty | White | Black deriving (Eq)
-
+data Space = Empty | White | Black deriving (Eq,Ord)
 
 instance Show Space where
     show Empty = "."
@@ -24,29 +22,55 @@ instance Show Space where
 
 data RotateDirection = Clockwise | Counter deriving (Eq, Show)
 
+nub' xs = go S.empty xs
+  where go s [] = []
+        go s (x:xs) | S.member x s = go s xs
+                    | otherwise    = x : go (S.insert x s) xs
+
+type ScoreMemo = M.Map Board Int
+
+infinity = 8^(8::Int) :: Int
 
 negamaxScore :: Int -> Space -> Board -> Int
-negamaxScore depth color = abPrune depth color (-(8^8)) (8^8)
-    where abPrune depth color a b board
+negamaxScore depth color board = let (s,smemo) = abPrune M.empty depth color (-infinity) infinity board in s
+{-
+    where infinity = 8^(8::Int)
+          abPrune depth color a b board
               | depth == 0 = let s = scoreBoard board in if color == White then s else negate s
-              | otherwise = (\(a,_,_) -> a) $ foldl' f (-(8^8), a, b) (nub $ possibleMoves color board)
+              | otherwise = (\(a,_,_) -> a) $ foldl' f (-infinity, a, b) (nub' $ possibleMoves color board)
               where f :: (Int, Int, Int) -> Board -> (Int, Int, Int)
                     f x@(bestVal, a, b) board = if a >= b then x
                                                 else let val = abPrune (depth-1) (otherColor color) (negate b) (negate a) board
                                                          bestVal' = max bestVal val
                                                          a' = max a val
                                                      in (bestVal', a', b)
+-}
+
+abPrune :: ScoreMemo -> Int -> Space -> Int -> Int -> Board -> (Int,ScoreMemo)
+abPrune smemo depth color a b board
+    | depth == 0 = case M.lookup board smemo of
+                     Nothing -> let s = scoreBoard board
+                                in (s, M.insert board s smemo)
+                     Just s  -> (s, smemo)
+    | otherwise = (v,smemo)
+                    where (v,_,_,smemo) = foldl' (abgo color depth) (-infinity, a, b, smemo) (nub' $ possibleMoves color board)
+
+abgo :: Space -> Int -> (Int,Int,Int,ScoreMemo) -> Board -> (Int,Int,Int,ScoreMemo)
+abgo color depth x@(bestVal, a, b, smemo) board
+  | a >= b            = x
+  | otherwise         = let (val,smemo') = abPrune smemo (depth-1) (otherColor color) (negate b) (negate a) board
+                            bestVal' = max bestVal val
+                            a' = max a val
+                        in (bestVal', a', b, smemo')
 
 otherColor :: Space -> Space
 otherColor Empty = Empty
 otherColor White = Black
 otherColor Black = White
 
-
 showBoard :: Board -> String
 showBoard b = concat [showRow y | y <- [1..6]]
               where showRow y = concat [show (b ! (x, y)) | x <- [1..3]] ++ " " ++ concat [show (b ! (x, y)) | x <- [4..6]] ++ "\n"
-
 
 possibleMoves :: Space -> Board -> [Board]
 possibleMoves s b = move <$>
@@ -55,6 +79,7 @@ possibleMoves s b = move <$>
                     quadrantDeltas <*>
                     [Clockwise, Counter] <*>
                     pure b
+
 
 move :: (Int, Int) -> Space -> (Int, Int) -> RotateDirection -> Board -> Board
 move p s d r b = rotateQuadrant d r (M.insert p s b)
